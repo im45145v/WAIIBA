@@ -59,24 +59,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
 # IDE
 .idea/
 .vscode/
@@ -92,7 +74,8 @@ Thumbs.db
 .streamlit/secrets.toml
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
-# Local development
+# Logs
 *.log
+nohup.out
