@@ -79,3 +79,16 @@ Thumbs.db
 # Logs
 *.log
 nohup.out
+
+# Alumni System specific
+*.pdf
+temp_downloads/
+scraping_data/
+
+# Database dumps
+*.sql
+*.dump
+
+# Playwright
+playwright-report/
+test-results/
