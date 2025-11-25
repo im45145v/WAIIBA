@@ -5,8 +5,32 @@ This module provides functionality to scrape LinkedIn profiles
 and extract alumni information such as name, current company,
 email, job history, and education.
 
-IMPORTANT: Web scraping LinkedIn may violate their Terms of Service.
-Use responsibly and ensure compliance with applicable laws and policies.
+IMPORTANT LEGAL AND ETHICAL CONSIDERATIONS:
+============================================
+1. Terms of Service: Web scraping LinkedIn may violate their Terms of Service.
+   Review https://www.linkedin.com/legal/user-agreement before use.
+
+2. Rate Limiting: This scraper implements delays between requests to avoid
+   overwhelming LinkedIn's servers. Configure SCRAPER_MIN_DELAY and 
+   SCRAPER_MAX_DELAY environment variables appropriately.
+
+3. robots.txt: LinkedIn's robots.txt (https://www.linkedin.com/robots.txt)
+   should be reviewed. Note that robots.txt is advisory for logged-in sessions.
+
+4. Account Suspension Risk: Automated access may result in account suspension.
+   Use a dedicated account and avoid scraping during peak hours.
+
+5. Data Privacy: Ensure compliance with GDPR, CCPA, and other privacy regulations
+   when storing and processing scraped personal data.
+
+6. Best Practices:
+   - Use reasonable delays (10-30 seconds between requests)
+   - Avoid scraping during peak usage hours
+   - Limit concurrent scraping sessions
+   - Store only necessary data
+   - Implement proper data retention policies
+
+Use responsibly and ensure compliance with all applicable laws and policies.
 """
 
 import asyncio

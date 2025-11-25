@@ -23,6 +23,11 @@ on:
         default: 'false'
         type: boolean
 
+# Set minimum required permissions
+permissions:
+  contents: read
+  issues: write  # Required for failure notification issue creation
+
 jobs:
   scrape-linkedin:
     runs-on: ubuntu-latest

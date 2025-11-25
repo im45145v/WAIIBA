@@ -63,9 +63,10 @@ def get_table_counts() -> dict[str, int]:
     """
     counts = {}
     with engine.connect() as connection:
-        for table in Base.metadata.tables:
-            result = connection.execute(
-                text(f"SELECT COUNT(*) FROM {table}")  # noqa: S608
-            )
-            counts[table] = result.scalar() or 0
+        for table_name, table_obj in Base.metadata.tables.items():
+            # Use SQLAlchemy's select with func.count for safer queries
+            from sqlalchemy import func, select
+            stmt = select(func.count()).select_from(table_obj)
+            result = connection.execute(stmt)
+            counts[table_name] = result.scalar() or 0
     return counts

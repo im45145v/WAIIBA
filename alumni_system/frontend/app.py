@@ -17,6 +17,9 @@ import pandas as pd
 import streamlit as st
 
 # Import alumni system modules
+DB_AVAILABLE = False
+_import_error = None
+
 try:
     from alumni_system.chatbot.nlp_chatbot import get_chatbot
     from alumni_system.database.connection import get_db_context
@@ -34,7 +37,8 @@ try:
     from alumni_system.database.models import Alumni
 
     DB_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    _import_error = str(e)
     DB_AVAILABLE = False
 
 

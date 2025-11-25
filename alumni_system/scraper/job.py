@@ -98,7 +98,7 @@ async def run_scraping_job(
 
                             # Download and store PDF
                             pdf_stored = await _store_profile_pdf(
-                                scraper, alumni, linkedin_url
+                                scraper, alumni, linkedin_url, db
                             )
                             if pdf_stored:
                                 stats["pdfs_uploaded"] += 1
@@ -220,6 +220,7 @@ async def _store_profile_pdf(
     scraper: LinkedInScraper,
     alumni: Alumni,
     linkedin_url: str,
+    db,
 ) -> bool:
     """
     Download and store LinkedIn profile PDF.
@@ -228,6 +229,7 @@ async def _store_profile_pdf(
         scraper: LinkedIn scraper instance.
         alumni: Alumni record.
         linkedin_url: LinkedIn profile URL.
+        db: Database session.
     
     Returns:
         True if PDF was stored successfully.
@@ -245,9 +247,8 @@ async def _store_profile_pdf(
             linkedin_id,
         )
 
-        # Update alumni record with PDF URL
-        with get_db_context() as db:
-            update_alumni(db, alumni.id, linkedin_pdf_url=result["download_url"])
+        # Update alumni record with PDF URL using existing session
+        update_alumni(db, alumni.id, linkedin_pdf_url=result["download_url"])
 
         return True
 

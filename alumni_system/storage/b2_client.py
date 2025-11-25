@@ -108,7 +108,8 @@ class B2StorageClient:
             )
         
         # Get download URL
-        download_url = self._api.get_download_url_for_fileid(file_version.id_)
+        api = self._get_api()
+        download_url = api.get_download_url_for_fileid(file_version.id_)
         
         return {
             "file_id": file_version.id_,
@@ -158,7 +159,8 @@ class B2StorageClient:
         )
         
         # Get download URL
-        download_url = self._api.get_download_url_for_fileid(file_version.id_)
+        api = self._get_api()
+        download_url = api.get_download_url_for_fileid(file_version.id_)
         
         return {
             "file_id": file_version.id_,
