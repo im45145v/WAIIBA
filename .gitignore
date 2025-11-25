@@ -85,9 +85,9 @@ nohup.out
 temp_downloads/
 scraping_data/
 
-# Database dumps
-*.sql
+# Database dumps (but allow init scripts)
 *.dump
+!scripts/init_db.sql
 
 # Playwright
 playwright-report/
