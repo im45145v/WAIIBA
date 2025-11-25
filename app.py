@@ -123,7 +123,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# COLOR PALETTE
+# CONSTANTS
 # =============================================================================
 COLORS = {
     'primary': '#00d9ff',
@@ -138,10 +138,16 @@ COLORS = {
     'text_secondary': '#8899a6'
 }
 
+# Event types that represent failed/attack attempts
+FAILED_EVENT_TYPES = ['Failed Password', 'Invalid User', 'Auth Failure']
+
+# Cache TTL in seconds (5 minutes for timely security updates)
+CACHE_TTL_SECONDS = 300
+
 # =============================================================================
 # DATA LOADING
 # =============================================================================
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
 def load_openssh_data():
     """
     Load OpenSSH log data from the LogHub GitHub repository.
@@ -254,7 +260,7 @@ def create_kpi_metrics(df):
     
     total_events = len(df)
     unique_ips = df['IP_Address'].nunique()
-    failed_attempts = len(df[df['Event_Type'].isin(['Failed Password', 'Invalid User', 'Auth Failure'])])
+    failed_attempts = len(df[df['Event_Type'].isin(FAILED_EVENT_TYPES)])
     critical_events = len(df[df['Severity'] == 'Critical'])
     success_count = len(df[df['Event_Type'] == 'Successful Login'])
     
@@ -577,7 +583,7 @@ def create_security_gauge(value, title, color):
 
 def create_attack_scatter(df):
     """Create scatter plot of attack patterns."""
-    failed_events = df[df['Event_Type'].isin(['Failed Password', 'Invalid User', 'Auth Failure'])]
+    failed_events = df[df['Event_Type'].isin(FAILED_EVENT_TYPES)]
     
     attack_stats = failed_events.groupby('IP_Address').agg({
         'LineId': 'count',
@@ -730,7 +736,7 @@ def render_executive_summary(df):
     total = len(df)
     critical = len(df[df['Severity'] == 'Critical'])
     high = len(df[df['Severity'] == 'High'])
-    failed = len(df[df['Event_Type'].isin(['Failed Password', 'Invalid User'])])
+    failed = len(df[df['Event_Type'].isin(FAILED_EVENT_TYPES)])
     
     threat_score = min(100, (critical * 10 + high * 2) / total * 100) if total > 0 else 0
     attack_intensity = (failed / total * 100) if total > 0 else 0
@@ -849,7 +855,7 @@ def render_attack_patterns(df):
         # Attack statistics
         st.markdown("#### Attack Statistics")
         
-        failed_events = df[df['Event_Type'].isin(['Failed Password', 'Invalid User', 'Auth Failure'])]
+        failed_events = df[df['Event_Type'].isin(FAILED_EVENT_TYPES)]
         
         st.markdown(f"""
         <div class="info-box">
