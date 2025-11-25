@@ -1,0 +1,61 @@
+# Docker Compose for Alumni Management System
+# ============================================
+# This file spins up a local PostgreSQL database for testing.
+#
+# Usage:
+#   docker-compose up -d        # Start the database
+#   docker-compose down         # Stop the database
+#   docker-compose down -v      # Stop and remove all data
+#
+# After starting, the database will be available at:
+#   Host: localhost
+#   Port: 5432
+#   Database: alumni_db
+#   User: postgres
+#   Password: alumni_dev_password
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: alumni_postgres
+    environment:
+      POSTGRES_DB: alumni_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: alumni_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - alumni_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d alumni_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Optional: pgAdmin for database management UI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: alumni_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@alumni.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - alumni_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    profiles:
+      - admin  # Only start with: docker-compose --profile admin up
+
+volumes:
+  alumni_postgres_data:
+    driver: local
+  alumni_pgadmin_data:
+    driver: local
