@@ -226,7 +226,42 @@ The Streamlit application provides:
 - **Search & Filter**: Filter by batch, company, location, or search by name
 - **Alumni Details**: View detailed career history with past companies and roles
 - **Chatbot**: Natural language queries about alumni
-- **Admin Panel**: Add, edit, and delete alumni records
+- **Admin Panel**: Add, edit, delete alumni records, and import data
+
+### Importing Alumni Data (Excel/CSV)
+
+You can bulk import alumni data from an Excel (.xlsx, .xls) or CSV file:
+
+1. Go to **Admin Panel** → **Database** tab
+2. Click "Upload Alumni Excel/CSV"
+3. Select your file
+
+**Required columns in your file:**
+
+| Column Name | Description |
+|-------------|-------------|
+| `LinkedIn ID` or `linkedin_url` | LinkedIn profile URL or username |
+| `Roll No.` or `roll_number` | Student roll number (unique identifier) |
+| `Mobile No.` or `phone` | Phone number |
+| `Personal Email Id.` or `email` | Personal email address |
+| `College mail Id` or `college_email` | College email address |
+
+**Optional columns:**
+- `Name of the Student` or `Name` - Alumni name
+- `Batch` - Graduation batch/year
+
+**Example Excel format:**
+
+| Roll No. | Name of the Student | LinkedIn ID | Mobile No. | Personal Email Id. | College mail Id |
+|----------|---------------------|-------------|------------|-------------------|-----------------|
+| 2020001 | John Doe | johndoe123 | 9876543210 | john@gmail.com | john@college.edu |
+| 2020002 | Jane Smith | linkedin.com/in/janesmith | 9876543211 | jane@gmail.com | jane@college.edu |
+
+The system will:
+- Auto-detect column names (flexible matching)
+- Skip duplicate entries (based on roll number)
+- Convert LinkedIn usernames to full URLs
+- Fetch additional data (company, job history) via the LinkedIn scraper
 
 ### Chatbot Queries
 

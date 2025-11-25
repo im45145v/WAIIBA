@@ -28,6 +28,7 @@ try:
         delete_alumni,
         get_all_alumni,
         get_alumni_by_id,
+        get_alumni_by_roll_number,
         get_job_history_by_alumni,
         get_unique_batches,
         get_unique_companies,
@@ -829,22 +830,132 @@ DB_PASSWORD=your_password
                 st.error(f"Error: {e}")
     
     st.markdown("---")
-    st.markdown("##### Import CSV Data")
-    uploaded_file = st.file_uploader("Upload Alumni CSV", type=["csv"])
+    st.markdown("##### Import Alumni Data (Excel/CSV)")
+    st.markdown("""
+    **Required columns in your file:**
+    - `LinkedIn ID` or `linkedin_url` - LinkedIn profile URL or username
+    - `Roll No.` or `roll_number` - Student roll number
+    - `Mobile No.` or `phone` - Phone number  
+    - `Personal Email Id.` or `email` - Personal email
+    - `College mail Id` or `college_email` - College email
+    
+    *Other columns like Name, Batch will be imported if present. LinkedIn data (current company, job history) will be fetched by the scraper.*
+    """)
+    
+    uploaded_file = st.file_uploader(
+        "Upload Alumni Excel/CSV", 
+        type=["csv", "xlsx", "xls"],
+        help="Upload an Excel (.xlsx, .xls) or CSV file with alumni data"
+    )
     
     if uploaded_file:
         try:
-            df = pd.read_csv(uploaded_file)
-            st.write("Preview:")
-            st.dataframe(df.head())
+            # Read file based on type
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
             
-            if st.button("Import Data"):
-                # Map CSV columns to database fields
-                st.info("Importing data... This may take a while.")
-                # Implementation would go here
-                st.success("Data imported successfully!")
+            st.write(f"**Preview ({len(df)} records):**")
+            st.dataframe(df.head(10), use_container_width=True)
+            
+            # Show column mapping
+            st.markdown("##### Column Mapping")
+            st.markdown("The following columns were detected:")
+            
+            # Map common column names to database fields
+            column_mapping = {
+                'linkedin_id': ['LinkedIn ID', 'linkedin_url', 'Linkedin ID', 'LinkedIn', 'linkedin'],
+                'roll_number': ['Roll No.', 'roll_number', 'Roll Number', 'rollno', 'roll'],
+                'name': ['Name of the Student', 'Name', 'name', 'Student Name'],
+                'batch': ['Batch', 'batch', 'Year', 'year'],
+                'mobile_number': ['Mobile No.', 'phone', 'Phone', 'mobile', 'Mobile', 'WhatsApp Number'],
+                'personal_email': ['Personal Email Id.', 'email', 'Email', 'personal_email', 'Personal Email'],
+                'college_email': ['College mail Id', 'college_email', 'College Email', 'college email'],
+            }
+            
+            detected_columns = {}
+            for db_field, possible_names in column_mapping.items():
+                for col_name in possible_names:
+                    if col_name in df.columns:
+                        detected_columns[db_field] = col_name
+                        break
+            
+            if detected_columns:
+                mapping_df = pd.DataFrame([
+                    {"Database Field": k, "Excel/CSV Column": v} 
+                    for k, v in detected_columns.items()
+                ])
+                st.dataframe(mapping_df, use_container_width=True, hide_index=True)
+            else:
+                st.warning("Could not auto-detect columns. Please ensure your file has the required columns.")
+            
+            # Import button
+            if st.button("📥 Import Data", type="primary"):
+                if 'linkedin_id' not in detected_columns and 'roll_number' not in detected_columns:
+                    st.error("At least LinkedIn ID or Roll Number column is required!")
+                else:
+                    with st.spinner("Importing alumni data..."):
+                        try:
+                            imported = 0
+                            skipped = 0
+                            errors = []
+                            
+                            with get_db_context() as db:
+                                for idx, row in df.iterrows():
+                                    try:
+                                        # Get values from mapped columns
+                                        alumni_data = {}
+                                        
+                                        for db_field, csv_col in detected_columns.items():
+                                            value = row.get(csv_col)
+                                            if pd.notna(value):
+                                                alumni_data[db_field] = str(value).strip()
+                                        
+                                        # Process LinkedIn URL/ID
+                                        if 'linkedin_id' in alumni_data:
+                                            linkedin_val = alumni_data['linkedin_id']
+                                            if 'linkedin.com' in linkedin_val:
+                                                alumni_data['linkedin_url'] = linkedin_val
+                                                # Extract ID from URL
+                                                if '/in/' in linkedin_val:
+                                                    alumni_data['linkedin_id'] = linkedin_val.split('/in/')[-1].rstrip('/')
+                                            else:
+                                                alumni_data['linkedin_url'] = f"https://www.linkedin.com/in/{linkedin_val}"
+                                        
+                                        # Check if already exists
+                                        if 'roll_number' in alumni_data:
+                                            from alumni_system.database.crud import get_alumni_by_roll_number
+                                            existing = get_alumni_by_roll_number(db, alumni_data['roll_number'])
+                                            if existing:
+                                                skipped += 1
+                                                continue
+                                        
+                                        # Set name if not provided
+                                        if 'name' not in alumni_data:
+                                            alumni_data['name'] = alumni_data.get('roll_number', f'Alumni_{idx}')
+                                        
+                                        # Create alumni record
+                                        create_alumni(db, **alumni_data)
+                                        imported += 1
+                                        
+                                    except Exception as e:
+                                        errors.append(f"Row {idx + 2}: {str(e)}")
+                            
+                            st.success(f"✅ Import complete! {imported} records imported, {skipped} skipped (duplicates)")
+                            
+                            if errors:
+                                with st.expander(f"⚠️ {len(errors)} errors occurred"):
+                                    for error in errors[:20]:
+                                        st.text(error)
+                                    if len(errors) > 20:
+                                        st.text(f"... and {len(errors) - 20} more errors")
+                        
+                        except Exception as e:
+                            st.error(f"Import failed: {e}")
+        
         except Exception as e:
-            st.error(f"Error reading CSV: {e}")
+            st.error(f"Error reading file: {e}")
 
 
 # =============================================================================
