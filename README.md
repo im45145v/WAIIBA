@@ -17,7 +17,7 @@ A comprehensive system for managing alumni data with LinkedIn profile scraping, 
 ### Prerequisites
 
 - Python 3.10 or higher
-- PostgreSQL 13 or higher
+- Docker & Docker Compose (for local database)
 - A LinkedIn account (for scraping)
 - A Backblaze B2 account (for PDF storage)
 
@@ -47,15 +47,101 @@ cp .env.example .env
 # Edit .env with your credentials
 ```
 
-5. Initialize the database:
+5. **Start the local database (for testing)**:
+```bash
+docker-compose up -d
+```
+
+6. Initialize the database:
 ```bash
 python -c "from alumni_system.database.init_db import init_database; init_database()"
 ```
 
-6. Run the Streamlit application:
+7. Run the Streamlit application:
 ```bash
 streamlit run alumni_system/frontend/app.py
 ```
+
+## Local Database Setup (Testing Mode)
+
+For local development and testing, use Docker Compose to spin up a PostgreSQL database:
+
+```bash
+# Start PostgreSQL database
+docker-compose up -d
+
+# The database will be available at:
+# - Host: localhost
+# - Port: 5432
+# - Database: alumni_db
+# - User: postgres
+# - Password: alumni_dev_password
+
+# To stop the database
+docker-compose down
+
+# To stop and remove all data
+docker-compose down -v
+
+# Optional: Start with pgAdmin UI for database management
+docker-compose --profile admin up -d
+# Access pgAdmin at http://localhost:5050
+# Email: admin@alumni.local
+# Password: admin123
+```
+
+Update your `.env` file for local testing:
+```bash
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=alumni_db
+DB_USER=postgres
+DB_PASSWORD=alumni_dev_password
+```
+
+## How LinkedIn Login Works
+
+The LinkedIn scraper uses Playwright (a browser automation library) to authenticate with LinkedIn. Here's how it works:
+
+### Authentication Flow
+
+1. **Browser Launch**: Playwright launches a Chromium browser instance (headless by default)
+2. **Navigate to Login**: The scraper navigates to `https://www.linkedin.com/login`
+3. **Enter Credentials**: Your LinkedIn email and password (from environment variables) are filled into the login form
+4. **Submit Login**: The login button is clicked programmatically
+5. **Verify Success**: The scraper checks if the URL changed to the feed page, indicating successful login
+
+### Configuration
+
+Set these environment variables in your `.env` file:
+
+```bash
+LINKEDIN_EMAIL=your_linkedin_email@example.com
+LINKEDIN_PASSWORD=your_linkedin_password
+
+# Optional scraper settings
+SCRAPER_HEADLESS=true          # Run browser in headless mode (no UI)
+SCRAPER_SLOW_MO=100            # Milliseconds delay between actions
+SCRAPER_MIN_DELAY=5            # Minimum delay between profile scrapes (seconds)
+SCRAPER_MAX_DELAY=15           # Maximum delay between profile scrapes (seconds)
+```
+
+### Security Considerations
+
+- **Dedicated Account**: Use a dedicated LinkedIn account for scraping, not your personal account
+- **2FA Limitation**: If 2FA is enabled, the scraper cannot bypass security checkpoints automatically
+- **Rate Limiting**: The scraper includes random delays to avoid triggering LinkedIn's anti-bot detection
+- **Account Risk**: LinkedIn may suspend accounts that violate their Terms of Service
+- **Checkpoint Handling**: If LinkedIn requires security verification (CAPTCHA, email verification), manual intervention is needed
+
+### Troubleshooting LinkedIn Login
+
+| Issue | Solution |
+|-------|----------|
+| Login fails immediately | Verify email/password are correct in `.env` |
+| Security checkpoint triggered | Log in manually once to verify the account |
+| Account suspended | Create a new dedicated account, use longer delays |
+| 2FA required | Disable 2FA on the scraping account or handle manually |
 
 ## Configuration
 
@@ -120,6 +206,9 @@ WAIIBA/
 ├── .github/
 │   └── workflows/
 │       └── scraper.yml
+├── scripts/
+│   └── init_db.sql
+├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -133,8 +222,9 @@ WAIIBA/
 The Streamlit application provides:
 
 - **Dashboard**: Overview of alumni statistics
-- **Browse Alumni**: Paginated view of all alumni records
+- **Browse Alumni**: Paginated view of all alumni records (includes previous companies column)
 - **Search & Filter**: Filter by batch, company, location, or search by name
+- **Alumni Details**: View detailed career history with past companies and roles
 - **Chatbot**: Natural language queries about alumni
 - **Admin Panel**: Add, edit, and delete alumni records
 
@@ -181,6 +271,7 @@ The GitHub Actions workflow automatically runs:
 - Company name, designation, location
 - Start/end dates
 - Employment type
+- Tracks all previous companies and roles
 
 ### Education History Table
 - Institution, degree, field of study
@@ -214,7 +305,7 @@ This project is for educational purposes. Be aware of and comply with LinkedIn's
 ## Troubleshooting
 
 ### Database Connection Issues
-- Verify PostgreSQL is running
+- Verify PostgreSQL is running (`docker-compose ps`)
 - Check environment variables are correctly set
 - Ensure the database exists
 

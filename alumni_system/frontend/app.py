@@ -27,6 +27,8 @@ try:
         create_alumni,
         delete_alumni,
         get_all_alumni,
+        get_alumni_by_id,
+        get_job_history_by_alumni,
         get_unique_batches,
         get_unique_companies,
         get_unique_locations,
@@ -149,6 +151,16 @@ def alumni_to_dataframe(alumni_list: list) -> pd.DataFrame:
     """Convert list of Alumni objects to DataFrame."""
     data = []
     for alumni in alumni_list:
+        # Get previous companies from job history
+        previous_companies = []
+        if hasattr(alumni, 'job_history') and alumni.job_history:
+            for job in alumni.job_history:
+                if not job.is_current and job.company_name:
+                    role_info = f"{job.company_name}"
+                    if job.designation:
+                        role_info += f" ({job.designation})"
+                    previous_companies.append(role_info)
+        
         data.append({
             "ID": alumni.id,
             "Name": alumni.name,
@@ -158,6 +170,7 @@ def alumni_to_dataframe(alumni_list: list) -> pd.DataFrame:
             "Current Company": alumni.current_company,
             "Current Designation": alumni.current_designation,
             "Location": alumni.location,
+            "Previous Companies": "; ".join(previous_companies) if previous_companies else "",
             "Personal Email": alumni.personal_email,
             "College Email": alumni.college_email,
             "Mobile": alumni.mobile_number,
@@ -191,6 +204,7 @@ def render_sidebar() -> str:
             "📊 Dashboard",
             "👥 Browse Alumni",
             "🔍 Search & Filter",
+            "📋 Alumni Details",
             "💬 Chatbot",
             "⚙️ Admin Panel",
         ],
@@ -396,6 +410,140 @@ def render_search_filter():
     
     except Exception as e:
         st.error(f"Error searching alumni: {e}")
+
+
+def render_alumni_details():
+    """Render the alumni details page with job history."""
+    st.markdown("### 📋 Alumni Details & Career History")
+    st.markdown("View detailed information including past companies and roles.")
+    
+    if not DB_AVAILABLE:
+        st.warning("Database not configured. Please set up environment variables.")
+        return
+    
+    try:
+        with get_db_context() as db:
+            # Alumni selection
+            alumni_id = st.number_input("Enter Alumni ID", min_value=1, step=1, value=1)
+            
+            if st.button("Load Alumni Details"):
+                alumni = get_alumni_by_id(db, alumni_id)
+                
+                if alumni:
+                    st.session_state.viewing_alumni_id = alumni_id
+                else:
+                    st.error("Alumni not found.")
+                    return
+            
+            # Display alumni details if selected
+            if hasattr(st.session_state, 'viewing_alumni_id') and st.session_state.viewing_alumni_id:
+                alumni = get_alumni_by_id(db, st.session_state.viewing_alumni_id)
+                
+                if alumni:
+                    # Basic Information Card
+                    st.markdown("---")
+                    st.markdown("#### 👤 Basic Information")
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.markdown(f"**Name:** {alumni.name or 'N/A'}")
+                        st.markdown(f"**Batch:** {alumni.batch or 'N/A'}")
+                        st.markdown(f"**Roll Number:** {alumni.roll_number or 'N/A'}")
+                        st.markdown(f"**Gender:** {alumni.gender or 'N/A'}")
+                    
+                    with col2:
+                        st.markdown(f"**Personal Email:** {alumni.personal_email or 'N/A'}")
+                        st.markdown(f"**College Email:** {alumni.college_email or 'N/A'}")
+                        st.markdown(f"**Mobile:** {alumni.mobile_number or 'N/A'}")
+                        st.markdown(f"**WhatsApp:** {alumni.whatsapp_number or 'N/A'}")
+                    
+                    with col3:
+                        if alumni.linkedin_url:
+                            st.markdown(f"**LinkedIn:** [Profile]({alumni.linkedin_url})")
+                        else:
+                            st.markdown("**LinkedIn:** N/A")
+                        st.markdown(f"**Higher Studies:** {alumni.higher_studies or 'N/A'}")
+                        st.markdown(f"**Location:** {alumni.location or 'N/A'}")
+                    
+                    # Current Position Card
+                    st.markdown("---")
+                    st.markdown("#### 💼 Current Position")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"**Company:** {alumni.current_company or 'N/A'}")
+                        st.markdown(f"**Designation:** {alumni.current_designation or 'N/A'}")
+                    
+                    with col2:
+                        st.markdown(f"**Location:** {alumni.location or 'N/A'}")
+                        st.markdown(f"**Corporate Email:** {alumni.corporate_email or 'N/A'}")
+                    
+                    # Job History Card
+                    st.markdown("---")
+                    st.markdown("#### 📊 Career History (Past Companies & Roles)")
+                    
+                    job_history = get_job_history_by_alumni(db, alumni.id)
+                    
+                    if job_history:
+                        # Create a table for job history
+                        job_data = []
+                        for job in job_history:
+                            start = job.start_date.strftime("%b %Y") if job.start_date else "N/A"
+                            end = job.end_date.strftime("%b %Y") if job.end_date else ("Present" if job.is_current else "N/A")
+                            job_data.append({
+                                "Company": job.company_name,
+                                "Role/Designation": job.designation or "N/A",
+                                "Location": job.location or "N/A",
+                                "Duration": f"{start} - {end}",
+                                "Type": job.employment_type or "Full-time",
+                                "Current": "✓" if job.is_current else "",
+                            })
+                        
+                        job_df = pd.DataFrame(job_data)
+                        st.dataframe(job_df, use_container_width=True, hide_index=True)
+                        
+                        # Summary stats
+                        total_companies = len(set(j.company_name for j in job_history))
+                        st.info(f"📈 Total companies worked at: **{total_companies}** | Total positions: **{len(job_history)}**")
+                    else:
+                        st.info("No job history records found for this alumni.")
+                    
+                    # Education History (if available)
+                    if alumni.education_history:
+                        st.markdown("---")
+                        st.markdown("#### 🎓 Education History")
+                        
+                        edu_data = []
+                        for edu in alumni.education_history:
+                            edu_data.append({
+                                "Institution": edu.institution_name,
+                                "Degree": edu.degree or "N/A",
+                                "Field of Study": edu.field_of_study or "N/A",
+                                "Years": f"{edu.start_year or 'N/A'} - {edu.end_year or 'N/A'}",
+                                "Grade": edu.grade or "N/A",
+                            })
+                        
+                        edu_df = pd.DataFrame(edu_data)
+                        st.dataframe(edu_df, use_container_width=True, hide_index=True)
+                    
+                    # Additional Information
+                    st.markdown("---")
+                    st.markdown("#### 📝 Additional Information")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"**Internship:** {alumni.internship or 'N/A'}")
+                        st.markdown(f"**POR (Positions of Responsibility):** {alumni.por or 'N/A'}")
+                    
+                    with col2:
+                        st.markdown(f"**Notable Alma Mater:** {alumni.notable_alma_mater or 'N/A'}")
+                        st.markdown(f"**STEP Programme:** {alumni.step_programme or 'N/A'}")
+                    
+                    if alumni.remarks:
+                        st.markdown(f"**Remarks:** {alumni.remarks}")
+    
+    except Exception as e:
+        st.error(f"Error loading alumni details: {e}")
 
 
 def render_chatbot():
@@ -715,6 +863,8 @@ def main():
         render_browse_alumni()
     elif page == "🔍 Search & Filter":
         render_search_filter()
+    elif page == "📋 Alumni Details":
+        render_alumni_details()
     elif page == "💬 Chatbot":
         render_chatbot()
     elif page == "⚙️ Admin Panel":
